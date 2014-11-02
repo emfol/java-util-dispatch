@@ -37,7 +37,7 @@ public final class DispatchQueue extends Object implements Runnable {
 
     private void dispatchLoop() {
 
-        DispatchQueueItem nextItem;
+        DispatchQueueItem nextItem = null;
         boolean shouldRun = true;
 
         while (shouldRun) {

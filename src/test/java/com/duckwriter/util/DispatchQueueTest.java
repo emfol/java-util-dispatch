@@ -13,6 +13,8 @@ public class DispatchQueueTest extends Object {
         random = new Random();
     }
 
+    private final DispatchQueue dispatchQueue;
+
     public DispatchQueueTest() {
         super();
         this.dispatchQueue = new DispatchQueue();
@@ -27,14 +29,18 @@ public class DispatchQueueTest extends Object {
     @Test
     public void createAndDispatchTasks() {
 
-        System.out.println("TESTER: Initiated...");
+        System.out.println("# TESTER: Initiated...\n");
 
-        dispatchQueue.dispatch(new TaskB("TESTER"));
-        dispatchQueue.dispatch(new TaskA(null));
-        dispatchQueue.dispatch(new TaskA(dispatchQueue));
-        dispatchQueue.dispatch(new TaskB("TESTER"));
+        this.dispatchQueue.dispatch(new TaskB("TESTER"));
+        this.dispatchQueue.dispatch(new TaskA(null));
+        this.dispatchQueue.dispatch(new TaskA(dispatchQueue));
+        this.dispatchQueue.dispatch(new TaskB("TESTER"));
 
-        System.out.println("TESTER: Done...");
+        try {
+            Thread.sleep(30000);
+        } catch (InterruptedException e) {}
+
+        System.out.println("# TESTER: Done...\n");
 
     }
 
@@ -55,10 +61,13 @@ public class DispatchQueueTest extends Object {
 
             delay = random.nextInt(5000);
             System.out.printf("TASK A: Starting delay that will take about %d ms to complete...\n", delay);
-            Thread.sleep(delay);
+
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {}
 
             if (this.dispatchQueue != null) {
-                System.out.println("TASK A: Dispatching a Task B...\n");
+                System.out.println("TASK A: Dispatching a Task B...");
                 this.dispatchQueue.dispatch(new TaskB("TASK A"));
             }
 
@@ -85,11 +94,15 @@ public class DispatchQueueTest extends Object {
 
             delay = random.nextInt(3000);
             System.out.printf("TASK B: This first part will take about %d ms to complete...\n", delay);
-            Thread.sleep(delay);
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {}
 
             delay = random.nextInt(2000);
             System.out.printf("TASK B: This second part will take about %d ms to complete...\n", delay);
-            Thread.sleep(delay);
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {}
 
             System.out.println("TASK B: Done...\n");
 
