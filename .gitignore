@@ -1,0 +1,6 @@
+# Binary Files
+*.class
+
+# Target Folder
+/target
+
