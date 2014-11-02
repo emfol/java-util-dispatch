@@ -37,7 +37,13 @@ public class DispatchQueueTest extends Object {
         this.dispatchQueue.dispatch(new TaskB("TESTER"));
 
         try {
-            Thread.sleep(30000);
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {}
+
+        this.dispatchQueue.dispatch(new TaskA(dispatchQueue));
+
+        try {
+            Thread.sleep(25000);
         } catch (InterruptedException e) {}
 
         System.out.println("# TESTER: Done...\n");
