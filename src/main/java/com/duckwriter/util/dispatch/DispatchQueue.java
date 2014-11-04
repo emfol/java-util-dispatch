@@ -95,7 +95,13 @@ public final class DispatchQueue extends Object implements Runnable {
         }
 
         if (isNotRunning) {
+            // now it's ok to start running...
             this.dispatchLoop();
+            // this point is only reached when stop method has been called...
+            synchronized (this) {
+                this.shouldRun = true;
+                this.isRunning = false;
+            }
         }
 
     }
