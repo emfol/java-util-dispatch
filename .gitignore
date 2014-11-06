@@ -2,5 +2,10 @@
 *.class
 
 # Target Folder
-/target
+/target/
+
+# Eclipse Settings
+/.classpath
+/.project
+/.settings/
 
