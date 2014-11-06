@@ -17,8 +17,7 @@ public class DispatchQueueTest extends Object {
 
     public DispatchQueueTest() {
         super();
-        this.dispatchQueue = new DispatchQueue();
-        (new Thread(dispatchQueue)).start();
+        this.dispatchQueue = DispatchQueue.createDispatchQueue();
     }
 
     @Override
@@ -105,10 +104,6 @@ public class DispatchQueueTest extends Object {
 
             System.out.println("\n# TEST C: Initiated...\n");
 
-            System.out.println("# TEST C: Trying to re-run dispatch queue...");
-            this.dispatchQueue.run();
-            System.out.println("# TEST C: OK...");
-
             System.out.println("# TEST C: Creating a second thread for dispatch queue...");
             thread = new Thread(this.dispatchQueue);
             ti = System.nanoTime();
@@ -118,6 +113,10 @@ public class DispatchQueueTest extends Object {
             tf = System.nanoTime();
             System.out.printf("# TEST C: Second thread is dead within %d ns...\n", tf - ti);
             thread = null;
+
+            System.out.println("# TEST C: Trying to re-run dispatch queue...");
+            this.dispatchQueue.run();
+            System.out.println("# TEST C: OK...");
 
             System.out.println("# TEST C: Dispatching Task A (Legolas)...");
             this.dispatchQueue.dispatch(new TaskA("Legolas", null));

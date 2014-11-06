@@ -2,15 +2,44 @@ package com.duckwriter.util.dispatch;
 
 public final class DispatchQueue extends Object implements Runnable {
 
+    /*
+     * Private Instance Variables
+     */
+
     private final DispatchQueueItem dispatchQueue;
     private boolean shouldRun;
     private boolean isRunning;
+
+    /*
+     * Constructors
+     */
 
     public DispatchQueue() {
         super();
         this.dispatchQueue = new DispatchQueueItem(null);
         this.shouldRun = true;
         this.isRunning = false;
+    }
+
+    /*
+     * Public Class Methods
+     */
+
+    public static DispatchQueue createDispatchQueue() {
+
+        DispatchQueue dq;
+        Thread dt;
+
+        dq = new DispatchQueue();
+        dt = new Thread(dq);
+        dt.setPriority(Thread.MAX_PRIORITY);
+        dt.start();
+
+        // try to release cpu for new thread
+        Thread.yield();
+
+        return dq;
+
     }
 
     /*
