@@ -6,6 +6,7 @@ public final class DispatchQueue extends Object implements Runnable {
      * Private Instance Variables
      */
 
+    private final Object semaphore;
     private final DispatchQueueItem dispatchQueue;
     private boolean shouldRun;
     private boolean isRunning;
@@ -16,6 +17,7 @@ public final class DispatchQueue extends Object implements Runnable {
 
     public DispatchQueue() {
         super();
+        this.semaphore = new Object();
         this.dispatchQueue = new DispatchQueueItem(null);
         this.shouldRun = true;
         this.isRunning = false;
@@ -46,6 +48,7 @@ public final class DispatchQueue extends Object implements Runnable {
      * Private Methods
      */
 
+    // this method assumes semaphore is locked
     private void enqueue(DispatchQueueItem newItem) {
         DispatchQueueItem item = this.dispatchQueue;
         while (item.next != null) {
@@ -54,6 +57,7 @@ public final class DispatchQueue extends Object implements Runnable {
         item.next = newItem;
     }
 
+    // this method assumes semaphore is locked
     private DispatchQueueItem dequeue() {
         DispatchQueueItem item, queue = this.dispatchQueue;
         item = queue.next;
@@ -66,22 +70,23 @@ public final class DispatchQueue extends Object implements Runnable {
 
     private void dispatchLoop() {
 
+        Object sem = this.semaphore;
         DispatchQueueItem nextItem = null;
-        boolean shouldRun = true;
+        boolean shouldRun;
 
-        while (shouldRun) {
-            synchronized (this) {
+        do {
+            synchronized (sem) {
                 while ((shouldRun = this.shouldRun)
                     && (nextItem = this.dequeue()) == null) {
                     try {
-                        this.wait();
+                        sem.wait();
                     } catch (InterruptedException e) {}
                 }
             }
             if (shouldRun && nextItem != null) {
                 nextItem.task.run();
             }
-        }
+        } while (shouldRun);
 
     }
 
@@ -91,6 +96,7 @@ public final class DispatchQueue extends Object implements Runnable {
 
     public void dispatch(Runnable task) {
 
+        Object sem = this.semaphore;
         DispatchQueueItem newItem;
 
         if (task == null) {
@@ -98,25 +104,27 @@ public final class DispatchQueue extends Object implements Runnable {
         }
 
         newItem = new DispatchQueueItem(task);
-        synchronized (this) {
+        synchronized (sem) {
             this.enqueue(newItem);
-            this.notifyAll();
+            sem.notify();
         }
 
     }
 
     public void stop() {
-        synchronized (this) {
+        Object sem = this.semaphore;
+        synchronized (sem) {
             this.shouldRun = false;
-            this.notifyAll();
+            sem.notify();
         }
     }
 
     public void run() {
 
+        Object sem = this.semaphore;
         boolean isNotRunning;
 
-        synchronized (this) {
+        synchronized (sem) {
             isNotRunning = !this.isRunning;
             if (isNotRunning) {
                 this.isRunning = true;
@@ -127,7 +135,7 @@ public final class DispatchQueue extends Object implements Runnable {
             // now it's ok to start running...
             this.dispatchLoop();
             // this point is only reached when stop method has been called...
-            synchronized (this) {
+            synchronized (sem) {
                 this.shouldRun = true;
                 this.isRunning = false;
             }
