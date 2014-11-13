@@ -8,7 +8,7 @@ public final class DispatchQueue extends Object implements Runnable {
 
     private final Object semaphore;
     private final DispatchQueueItem dispatchQueue;
-    private boolean shouldRun;
+    private boolean isEnabled;
     private boolean isRunning;
 
     /*
@@ -19,7 +19,7 @@ public final class DispatchQueue extends Object implements Runnable {
         super();
         this.semaphore = new Object();
         this.dispatchQueue = new DispatchQueueItem(null);
-        this.shouldRun = true;
+        this.isEnabled = true;
         this.isRunning = false;
     }
 
@@ -70,16 +70,15 @@ public final class DispatchQueue extends Object implements Runnable {
 
     private void dispatchLoop() {
 
-        Object sem = this.semaphore;
         DispatchQueueItem nextItem = null;
         boolean shouldRun;
 
         do {
-            synchronized (sem) {
-                while ((shouldRun = this.shouldRun)
+            synchronized (this.semaphore) {
+                while ((shouldRun = this.isEnabled)
                     && (nextItem = this.dequeue()) == null) {
                     try {
-                        sem.wait();
+                        this.semaphore.wait();
                     } catch (InterruptedException e) {}
                 }
             }
@@ -96,7 +95,6 @@ public final class DispatchQueue extends Object implements Runnable {
 
     public void dispatch(Runnable task) {
 
-        Object sem = this.semaphore;
         DispatchQueueItem newItem;
 
         if (task == null) {
@@ -104,39 +102,38 @@ public final class DispatchQueue extends Object implements Runnable {
         }
 
         newItem = new DispatchQueueItem(task);
-        synchronized (sem) {
+        synchronized (this.semaphore) {
             this.enqueue(newItem);
-            sem.notify();
+            this.semaphore.notify();
         }
 
     }
 
     public void stop() {
-        Object sem = this.semaphore;
-        synchronized (sem) {
-            this.shouldRun = false;
-            sem.notify();
+        synchronized (this.semaphore) {
+            this.isEnabled = false;
+            this.semaphore.notify();
         }
     }
 
+    @Override
     public void run() {
 
-        Object sem = this.semaphore;
-        boolean isNotRunning;
+        boolean shouldRun;
 
-        synchronized (sem) {
-            isNotRunning = !this.isRunning;
-            if (isNotRunning) {
+        synchronized (this.semaphore) {
+            shouldRun = this.isEnabled && !this.isRunning;
+            if (shouldRun) {
                 this.isRunning = true;
             }
         }
 
-        if (isNotRunning) {
+        if (shouldRun) {
             // now it's ok to start running...
             this.dispatchLoop();
             // this point is only reached when stop method has been called...
-            synchronized (sem) {
-                this.shouldRun = true;
+            synchronized (this.semaphore) {
+                this.isEnabled = true;
                 this.isRunning = false;
             }
         }
