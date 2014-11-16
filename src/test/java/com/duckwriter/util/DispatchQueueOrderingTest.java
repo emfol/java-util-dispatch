@@ -16,6 +16,10 @@ public class DispatchQueueOrderingTest extends Object {
     private int nextResultListItem;
     private boolean shouldWait;
 
+    /*
+     * Constructors
+     */
+
     public DispatchQueueOrderingTest() {
         super();
         this.dispatchQueue = DispatchQueue.createDispatchQueue();
@@ -26,18 +30,29 @@ public class DispatchQueueOrderingTest extends Object {
         this.init();
     }
 
+    /*
+     * Private Methods
+     */
+
     private void init() {
         Random generator = new Random();
         for (int i = 0, limit = this.baseList.length; i < limit; ++i) {
-            this.baseList[i] = generator.nextInt();;
+            this.baseList[i] = generator.nextInt();
         }
     }
 
+    private String formatDelay(long nsDelay) {
+        return String.format("%.2f ms", nsDelay / 1000000.0);
+    }
+
+    /*
+     * Public Methods
+     */
+
     public void push(int number) {
-        // no synchronization should be carried out here
-        if (this.nextResultListItem < this.resultList.length) {
-            this.resultList[this.nextResultListItem++] = number;
-        }
+        // no synchronization should be done here
+        // also, no array boundary checking...
+        this.resultList[this.nextResultListItem++] = number;
     }
 
     public void dismiss() {
@@ -51,20 +66,24 @@ public class DispatchQueueOrderingTest extends Object {
     public void shouldPopulateArrayInCorrectOrder() {
 
         Populator p;
-        int i, limit = MAX_NUMBERS;
+        long t0, t1;
+        int i, last = this.baseList.length - 1;
 
-        System.out.println("\nEnqueueing tasks...");
-        for (i = 0; i < limit; ++i) {
-            p = new Populator(this, this.baseList[i]);
+        System.out.print("\nEnqueueing tasks... ");
+        t0 = System.nanoTime();
+        for (i = 0; i <= last; ++i) {
+            p = new Populator(
+                this,
+                this.baseList[i],
+                i == last
+            );
             this.dispatchQueue.dispatch(p);
         }
+        t1 = System.nanoTime();
+        System.out.println(this.formatDelay(t1 - t0));
 
-        System.out.println("Scheduling dismisser...");
-        // dismisser
-        p = new Populator(this, 0, true);
-        this.dispatchQueue.dispatch(p);
-
-        System.out.println("\nWaiting on tasks...");
+        System.out.print("Waiting for tasks to finish... ");
+        t0 = System.nanoTime();
         synchronized (this) {
             while (this.shouldWait) {
                 try {
@@ -72,15 +91,20 @@ public class DispatchQueueOrderingTest extends Object {
                 } catch (InterruptedException e) {}
             }
         }
+        t1 = System.nanoTime();
+        System.out.println(this.formatDelay(t1 - t0));
 
-        System.out.println("\nVerifying...");
-        for (i = 0; i < limit; i++) {
+        System.out.print("Verifying... ");
+        t0 = System.nanoTime();
+        for (i = 0; i <= last; i++) {
             assertEquals(
                 "Item Comparison Error!",
                 this.baseList[i],
                 this.resultList[i]
             );
         }
+        t1 = System.nanoTime();
+        System.out.println(this.formatDelay(t1 - t0));
 
         // Done!
         System.out.println("Done!");
@@ -104,17 +128,17 @@ public class DispatchQueueOrderingTest extends Object {
             this.dismiss = dismiss;
         }
 
-        public Populator(DispatchQueueOrderingTest test, int number) {
-            this(test, number, false);
-        }
-
         @Override
         public void run() {
-            if (this.dismiss) {
-                this.test.dismiss();
-                return;
+            if (this.test != null) {
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {}
+                this.test.push(this.number);
+                if (this.dismiss) {
+                    this.test.dismiss();
+                }
             }
-            this.test.push(this.number);
         }
 
 
