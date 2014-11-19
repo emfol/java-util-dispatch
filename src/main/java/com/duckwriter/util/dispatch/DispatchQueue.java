@@ -71,7 +71,7 @@ public final class DispatchQueue extends Object implements Runnable {
     private void dispatchLoop() {
 
         DispatchQueueItem nextItem = null;
-        boolean shouldRun;
+        boolean shouldRun = true;
 
         do {
             synchronized (this.semaphore) {
