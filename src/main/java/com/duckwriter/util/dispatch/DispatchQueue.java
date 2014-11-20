@@ -7,7 +7,7 @@ public final class DispatchQueue extends Object implements Runnable {
      */
 
     private final Object semaphore;
-    private final DispatchQueueItem dispatchQueue;
+    private Task next;
     private boolean isEnabled;
     private boolean isRunning;
 
@@ -18,7 +18,7 @@ public final class DispatchQueue extends Object implements Runnable {
     public DispatchQueue() {
         super();
         this.semaphore = new Object();
-        this.dispatchQueue = new DispatchQueueItem(null);
+        this.next = null;
         this.isEnabled = true;
         this.isRunning = false;
     }
@@ -48,43 +48,33 @@ public final class DispatchQueue extends Object implements Runnable {
      * Private Methods
      */
 
-    // this method assumes semaphore is locked
-    private void enqueue(DispatchQueueItem newItem) {
-        DispatchQueueItem item = this.dispatchQueue;
-        while (item.next != null) {
-            item = item.next;
-        }
-        item.next = newItem;
-    }
-
-    // this method assumes semaphore is locked
-    private DispatchQueueItem dequeue() {
-        DispatchQueueItem item, queue = this.dispatchQueue;
-        item = queue.next;
-        if (item != null) {
-            queue.next = item.next;
-            item.next = null;
-        }
-        return item;
-    }
-
     private void dispatchLoop() {
 
-        DispatchQueueItem nextItem = null;
-        boolean shouldRun = true;
+        boolean shouldRun;
+        Task task;
 
         do {
+
+            // request synchronized access
             synchronized (this.semaphore) {
-                while ((shouldRun = this.isEnabled)
-                    && (nextItem = this.dequeue()) == null) {
+                while (this.isEnabled && this.next == null) {
                     try {
                         this.semaphore.wait();
                     } catch (InterruptedException e) {}
                 }
+                shouldRun = this.isEnabled;
+                task = shouldRun ? this.next : null;
+                if (task != null) {
+                    this.next = task.next;
+                    task.next = null;
+                }
             }
-            if (shouldRun && nextItem != null) {
-                nextItem.task.run();
+
+            // execute runnable outside of any critical section
+            if (task != null) {
+                task.runnable.run();
             }
+
         } while (shouldRun);
 
     }
@@ -93,18 +83,29 @@ public final class DispatchQueue extends Object implements Runnable {
      * Public Methods
      */
 
-    public void dispatch(Runnable task) {
+    public void dispatch(Runnable runnable) {
 
-        DispatchQueueItem newItem;
+        Task task, newTask;
 
-        if (task == null) {
-            throw new NullPointerException("Null Pointer for Task");
-        }
+        if (runnable != null) {
 
-        newItem = new DispatchQueueItem(task);
-        synchronized (this.semaphore) {
-            this.enqueue(newItem);
-            this.semaphore.notify();
+            // build new task
+            newTask = new Task(runnable);
+
+            // request synchronized access
+            synchronized (this.semaphore) {
+                if (this.next == null) {
+                    this.next = newTask;
+                } else {
+                    task = this.next;
+                    while (task.next != null) {
+                        task = task.next;
+                    }
+                    task.next = newTask;
+                }
+                this.semaphore.notify();
+            }
+
         }
 
     }
