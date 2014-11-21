@@ -127,8 +127,8 @@ public class DispatchQueueGeneralTest extends Object {
         this.waitOnCondition();
         queue.dispatch(new TaskA(taskNames[7], false));
         queue.dispatch(new TaskA(taskNames[8], true));
-
         this.waitOnCondition();
+
         t1 = System.nanoTime();
         System.out.printf("OK (%s)...\n", this.formatDelay(t1 - t0));
 
@@ -177,7 +177,7 @@ public class DispatchQueueGeneralTest extends Object {
         @Override
         public void run() {
 
-            int delay = 500 + generator.nextInt(1000);
+            int delay = 1000 + generator.nextInt(1000);
 
             // presentation...
             System.out.printf(
@@ -221,10 +221,15 @@ public class DispatchQueueGeneralTest extends Object {
         @Override
         public void run() {
 
-            int delay = 500 + generator.nextInt(2000);
+            int delay = 1000 + generator.nextInt(2000);
 
             // presentation...
             System.out.printf("$ Task B # %s > %s (%d ms)...\n", this.name, this.childName, delay);
+
+            // this code is being run by dispatch queue task... is it reentrant?
+            this.queue.run();
+
+            // if execution reaches this point it is reentrant!
             this.queue.dispatch(new TaskA(this.childName, false));
 
             // from outer instance
